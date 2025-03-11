@@ -11,6 +11,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -55,7 +56,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun testContentProviderDirectly() {
-        val uri = Uri.parse("content://com.example.proyectodivisacontent.provider/rate")
+        val uri = Uri.parse("content://com.example.proyectodivisacontent.provider/divisas")
 
         try {
             val cursor = contentResolver.query(uri, null, null, null, null)
@@ -196,7 +197,7 @@ fun CurrencyExchangeScreen() {
                                 fetchExchangeRate(
                                     contentResolver = contentResolver,
                                     currency = selectedCurrency,
-                                    change = "USD", // Cambio fijo a MXN
+                                    change = "MXN", // Cambio fijo a MXN
                                     startDate = startDate,
                                     endDate = endDate
                                 )
@@ -235,7 +236,7 @@ fun CurrencyExchangeScreen() {
                 ExchangeRateChart(
                     exchangeRates = exchangeRates,
                     currency = selectedCurrency,
-                    change = "USD",
+                    change = "MXN",
                     onValueSelected = { e, h ->
                         if (e != null && h != null) {
                             val index = h.x.toInt()
@@ -429,6 +430,8 @@ fun ExchangeRateChart(
     onValueSelected: (Entry?, Highlight?) -> Unit,
     onNothingSelected: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+
     val entries = exchangeRates.mapIndexed { index, rate ->
         Entry(index.toFloat(), rate.toFloat())
     }
@@ -436,27 +439,31 @@ fun ExchangeRateChart(
     AndroidView(
         factory = { context ->
             LineChart(context).apply {
-                configureChart()
+                configureChart(isDarkTheme)
                 data = LineData(
                     LineDataSet(entries, "$change/$currency").apply {
-                        color = Color.BLUE
+                        color = if (isDarkTheme) Color.CYAN else Color.BLUE
                         lineWidth = 2.5f
                         setDrawCircles(true)
-                        setCircleColor(Color.BLUE)
+                        setCircleColor(if (isDarkTheme) Color.YELLOW else Color.BLUE)
                         valueTextSize = 12f
                         mode = LineDataSet.Mode.CUBIC_BEZIER
                         cubicIntensity = 0.2f
+                        // Ajustar el color de los valores
+                        valueTextColor = if (isDarkTheme) Color.WHITE else Color.BLACK
                     }
                 )
                 setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
                     override fun onValueSelected(e: Entry?, h: Highlight?) {
                         onValueSelected(e, h)
                     }
-
                     override fun onNothingSelected() {
                         onNothingSelected()
                     }
                 })
+                // Actualizamos los colores del eje X y del eje izquierdo
+                xAxis.textColor = if (isDarkTheme) Color.WHITE else Color.BLACK
+                axisLeft.textColor = if (isDarkTheme) Color.WHITE else Color.BLACK
                 invalidate()
                 animateX(1000)
             }
@@ -467,7 +474,7 @@ fun ExchangeRateChart(
     )
 }
 
-fun LineChart.configureChart() {
+fun LineChart.configureChart(isDarkTheme: Boolean) {
     description.isEnabled = false
     setTouchEnabled(true)
     isDragEnabled = true
@@ -478,11 +485,13 @@ fun LineChart.configureChart() {
         position = XAxis.XAxisPosition.BOTTOM
         granularity = 1f
         setDrawGridLines(false)
+        textColor = if (isDarkTheme) Color.WHITE else Color.BLACK
     }
 
     axisLeft.apply {
         setDrawGridLines(true)
         axisMinimum = 0f
+        textColor = if (isDarkTheme) Color.WHITE else Color.BLACK
     }
 
     axisRight.isEnabled = false
