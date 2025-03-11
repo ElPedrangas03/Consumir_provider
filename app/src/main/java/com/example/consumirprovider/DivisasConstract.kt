@@ -4,22 +4,19 @@ import android.net.Uri
 
 object DivisasContract {
     // Autoridad del ContentProvider (debe coincidir con la definida en el proveedor)
-    const val AUTHORITY = "com.example.proyectodivisa.provider"
+    const val AUTHORITY = "com.example.proyectodivisacontent.provider"
 
-    const val PATH_DIVISAS_BY_CURRENCY_AND_CHANGE_AND_DATE = "divisas_by_currency_and_change_and_date"
-
-    // Path para acceder a la tabla de divisas
     const val PATH_DIVISAS = "divisas"
 
     // URI base para acceder al ContentProvider
-    val CONTENT_URI: Uri = Uri.parse("content://$AUTHORITY/$PATH_DIVISAS_BY_CURRENCY_AND_CHANGE_AND_DATE")
+    val CONTENT_URI: Uri = Uri.parse("content://$AUTHORITY/$PATH_DIVISAS")
 
-    // Define los nombres de las columnas
-    object DivisasColumns {
-        const val ID = "id"
-        const val DATE = "date"
-        const val CURRENCY = "currency"
-        const val RATE = "rate"
-        const val CHANGE = "change"
-    }
+    // URI para consultar por moneda y rango de fechas (Esto es la manera a llamar desde fuera del proyecto o dentro del mismo)
+    //val CONTENT_URI_BY_CURRENCY_AND_CHANGE_AND_DATE: Uri = Uri.parse("content://$AUTHORITY/$PATH_DIVISAS_BY_CURRENCY_AND_CHANGE_AND_DATE")
+
+    // const val PATH_EXCHANGE_RATES = "exchange_rates"
+
+    const val COLUMN_ID = "id"
+    const val COLUMN_TIME_LAST_UPDATE = "date"
+    const val COLUMN_EXCHANGE_RATE = "rate"
 }

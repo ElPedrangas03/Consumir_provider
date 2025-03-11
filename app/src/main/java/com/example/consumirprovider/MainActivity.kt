@@ -140,7 +140,7 @@ fun CurrencyExchangeScreen() {
         "HUF", "IDR", "ILS", "IMP", "INR", "IQD", "IRR", "ISK", "JEP", "JMD",
         "JOD", "JPY", "KES", "KGS", "KHR", "KID", "KMF", "KRW", "KWD", "KYD",
         "KZT", "LAK", "LBP", "LKR", "LRD", "LSL", "LYD", "MAD", "MDL", "MGA",
-        "MKD", "MMK", "MNT", "MOP", "MRU", "MUR", "MVR", "MWK", "MYR", "MZN",
+        "MKD", "MMK", "MNT", "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MYR", "MZN",
         "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN", "PGK",
         "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB", "RWF", "SAR",
         "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SLL", "SOS", "SRD",
@@ -196,7 +196,7 @@ fun CurrencyExchangeScreen() {
                                 fetchExchangeRate(
                                     contentResolver = contentResolver,
                                     currency = selectedCurrency,
-                                    change = "MXN", // Cambio fijo a MXN
+                                    change = "USD", // Cambio fijo a MXN
                                     startDate = startDate,
                                     endDate = endDate
                                 )
@@ -235,7 +235,7 @@ fun CurrencyExchangeScreen() {
                 ExchangeRateChart(
                     exchangeRates = exchangeRates,
                     currency = selectedCurrency,
-                    change = "MXN_to_$selectedCurrency",
+                    change = "USD",
                     onValueSelected = { e, h ->
                         if (e != null && h != null) {
                             val index = h.x.toInt()
@@ -313,7 +313,7 @@ private fun fetchExchangeRate(
     return contentResolver.query(uri, null, null, null, null)?.use { cursor ->
         val results = mutableListOf<Double>()
         while (cursor.moveToNext()) {
-            val rate = cursor.getDouble(cursor.getColumnIndex(DivisasContract.DivisasColumns.RATE))
+            val rate = cursor.getDouble(cursor.getColumnIndex(DivisasContract.COLUMN_EXCHANGE_RATE))
             results.add(rate)
             Log.d("ContentProviderTest", "Tasa de cambio: $rate")
         }
@@ -438,7 +438,7 @@ fun ExchangeRateChart(
             LineChart(context).apply {
                 configureChart()
                 data = LineData(
-                    LineDataSet(entries, "Tipo de Cambio $change/$currency").apply {
+                    LineDataSet(entries, "$change/$currency").apply {
                         color = Color.BLUE
                         lineWidth = 2.5f
                         setDrawCircles(true)
