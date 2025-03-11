@@ -29,6 +29,7 @@ import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.highlight.Highlight
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,6 +49,76 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // Prueba para verificar si el ContentProvider está disponible
+        testContentProviderDirectly()
+    }
+
+    private fun testContentProviderDirectly() {
+        val uri = Uri.parse("content://com.example.proyectodivisacontent.provider/rate")
+
+        try {
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            if (cursor == null) {
+                Log.e("TEST", "⚠️ Cursor NULO - Provider no encontrado")
+            } else {
+                Log.d("TEST", "✅ Cursor obtenido. Número de registros: ${cursor.count}")
+                cursor.close()
+            }
+        } catch (e: Exception) {
+            Log.e("TEST", "🔥 Error: ${e.message}")
+        }
+    }
+
+    private fun testContentProvider() {
+        val contentResolver = contentResolver
+        val scope = CoroutineScope(Dispatchers.Main)
+
+        scope.launch {
+            try {
+                val rates = withContext(Dispatchers.IO) {
+                    fetchExchangeRate(
+                        contentResolver = contentResolver,
+                        currency = "USD", // Moneda de prueba
+                        change = "MXN", // Cambio fijo
+                        startDate = "2025-01-01 00:00:00.000", // Fecha de inicio de prueba
+                        endDate = "2025-12-31 23:59:59.000" // Fecha de fin de prueba
+                    )
+                }
+
+                if (rates.isNotEmpty()) {
+                    // Si se obtuvieron datos, muestra un Toast y los registra en Logcat
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Datos obtenidos correctamente: ${rates.size} registros",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    Log.d("ContentProviderTest", "Datos obtenidos: $rates")
+                } else {
+                    // Si no se obtuvieron datos, muestra un mensaje de error
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "No se encontraron datos en el ContentProvider",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    Log.e("ContentProviderTest", "No se encontraron datos")
+                }
+            } catch (e: Exception) {
+                // Si hay un error, muestra un mensaje de error
+                runOnUiThread {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Error al acceder al ContentProvider: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                Log.e("ContentProviderTest", "Error: ${e.message}", e)
+            }
+        }
     }
 }
 
@@ -60,14 +131,30 @@ fun CurrencyExchangeScreen() {
     // Estados para la selección de moneda
     var selectedCurrency by remember { mutableStateOf("USD") }
     var expandedCurrency by remember { mutableStateOf(false) }
-    val currencies = listOf("USD", "EUR", "MXN", "GBP", "JPY")
+    val currencies = listOf("AED", "AFN", "ALL", "AMD", "ANG", "AOA", "ARS", "AUD", "AWG",
+        "AZN", "BAM", "BBD", "BDT", "BGN", "BHD", "BIF", "BMD", "BND", "BOB",
+        "BRL", "BSD", "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHF", "CLP",
+        "CNY", "COP", "CRC", "CUP", "CVE", "CZK", "DJF", "DKK", "DOP", "DZD",
+        "EGP", "ERN", "ETB", "EUR", "FJD", "FKP", "FOK", "GBP", "GEL", "GGP",
+        "GHS", "GIP", "GMD", "GNF", "GTQ", "GYD", "HKD", "HNL", "HRK", "HTG",
+        "HUF", "IDR", "ILS", "IMP", "INR", "IQD", "IRR", "ISK", "JEP", "JMD",
+        "JOD", "JPY", "KES", "KGS", "KHR", "KID", "KMF", "KRW", "KWD", "KYD",
+        "KZT", "LAK", "LBP", "LKR", "LRD", "LSL", "LYD", "MAD", "MDL", "MGA",
+        "MKD", "MMK", "MNT", "MOP", "MRU", "MUR", "MVR", "MWK", "MYR", "MZN",
+        "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN", "PGK",
+        "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB", "RWF", "SAR",
+        "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SLL", "SOS", "SRD",
+        "SSP", "STN", "SYP", "SZL", "THB", "TJS", "TMT", "TND", "TOP", "TRY",
+        "TTD", "TVD", "TWD", "TZS", "UAH", "UGX", "USD", "UYU", "UZS", "VES",
+        "VND", "VUV", "WST", "XAF", "XCD", "XDR", "XOF", "XPF", "YER", "ZAR",
+        "ZMW", "ZWL")
 
     // Estados para las fechas
     var startDate by remember { mutableStateOf("2025-01-01 00:00:00.000") }
     var endDate by remember { mutableStateOf("2025-12-31 23:59:59.000") }
 
     // Estados para los resultados y la carga
-    var exchangeRates by remember { mutableStateOf<List<Pair<String, Double>>>(emptyList()) }
+    var exchangeRates by remember { mutableStateOf<List<Double>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -108,8 +195,8 @@ fun CurrencyExchangeScreen() {
                             val rates = withContext(Dispatchers.IO) {
                                 fetchExchangeRate(
                                     contentResolver = contentResolver,
-                                    currency = "MXN",
-                                    change = selectedCurrency,
+                                    currency = selectedCurrency,
+                                    change = "MXN", // Cambio fijo a MXN
                                     startDate = startDate,
                                     endDate = endDate
                                 )
@@ -153,10 +240,10 @@ fun CurrencyExchangeScreen() {
                         if (e != null && h != null) {
                             val index = h.x.toInt()
                             if (index >= 0 && index < exchangeRates.size) {
-                                val (date, rate) = exchangeRates[index]
+                                val rate = exchangeRates[index]
                                 Toast.makeText(
                                     context,
-                                    "Fecha: $date, Valor: $rate",
+                                    "Valor: $rate",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             } else {
@@ -183,8 +270,8 @@ fun CurrencyExchangeScreen() {
                     }
                 )
                 LazyColumn(modifier = Modifier.padding(8.dp)) {
-                    items(exchangeRates) { (date, rate) ->
-                        ExchangeRateItem(date = date, rate = rate)
+                    items(exchangeRates) { rate ->
+                        ExchangeRateItem(rate = rate)
                     }
                 }
             }
@@ -194,41 +281,46 @@ fun CurrencyExchangeScreen() {
 }
 
 @Composable
-fun ExchangeRateItem(date: String, rate: Double) {
+fun ExchangeRateItem(rate: Double) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "Fecha: $date", style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(4.dp))
             Text(text = "Tasa: ${"%.4f".format(rate)}", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
 
 @SuppressLint("Range")
-fun fetchExchangeRate(
+private fun fetchExchangeRate(
     contentResolver: ContentResolver,
     currency: String,
     change: String,
     startDate: String,
     endDate: String
-): List<Pair<String, Double>> {
-    val uri = Uri.parse("content://com.example.proyectodivisa.provider/divisas_by_currency_and_change_and_date/$currency/$change/$startDate/$endDate")
+): List<Double> {
+    // Construye la URI con parámetros de consulta
+    val uri = Uri.parse("content://com.example.proyectodivisacontent.provider/divisas")
+        .buildUpon()
+        .appendQueryParameter("currency", currency)
+        .appendQueryParameter("change", change)
+        .appendQueryParameter("startDate", startDate)
+        .appendQueryParameter("endDate", endDate)
+        .build()
 
     return contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-        val results = mutableListOf<Pair<String, Double>>()
+        val results = mutableListOf<Double>()
         while (cursor.moveToNext()) {
-            val date = cursor.getString(cursor.getColumnIndex("date"))
-            val rate = cursor.getDouble(cursor.getColumnIndex("rate"))
-            results.add(Pair(date, rate))
-            Log.d("Divisas", "Fecha: $date, Tasa de cambio: $rate")
+            val rate = cursor.getDouble(cursor.getColumnIndex(DivisasContract.DivisasColumns.RATE))
+            results.add(rate)
+            Log.d("ContentProviderTest", "Tasa de cambio: $rate")
         }
         results
     } ?: emptyList()
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimePickerDialog(
@@ -331,13 +423,13 @@ fun DateTimePicker(
 
 @Composable
 fun ExchangeRateChart(
-    exchangeRates: List<Pair<String, Double>>,
+    exchangeRates: List<Double>,
     currency: String,
     change: String,
     onValueSelected: (Entry?, Highlight?) -> Unit,
     onNothingSelected: () -> Unit
 ) {
-    val entries = exchangeRates.mapIndexed { index, (_, rate) ->
+    val entries = exchangeRates.mapIndexed { index, rate ->
         Entry(index.toFloat(), rate.toFloat())
     }
 
